@@ -3,7 +3,6 @@
 # Authors: Antonios J. Bokas & Jamie Cookson
 
 import time
-import random
 from multiprocessing import Process, Value
 
 import numpy as np
@@ -19,14 +18,14 @@ BW = 12 * 10**6   # bandwidth in bits/sec
 FRAME = 1500 * 8  # frame size in bits
 
 # Slot allocations:
-SLOT = 10                   # micro sec
+SLOT = 10                   # slot length in micro sec
 ACK = RTS = CTS = SLOT * 3  # acknowledgment, request- and clear-to-send
 DIFS = SLOT * 4             # distributed interframe space
 SIFS = SLOT * 2             # short interframe space
 CW_MAX = SLOT * 1024        # contention window limit
 
 # Simulation:
-SIM_TIME = 10                               # simulation time sec
+SIM_TIME = 10                               # simulation time in sec
 ARRIVALS = [100, 200, 300, 500, 700, 1000]  # arrival rate in frames/sec
 
 # VARIABLES
@@ -36,7 +35,7 @@ throughput = collisions = fairness = 0  # to-do: use None instead?
 
 
 def main():
-    slot_start = Value('i', False)  # variable typecode and value
+    slot_start = Value('i', 0)  # variable typecode and value
 
     process = Process(target=slot_simulation,       # target function
                       args=(SIM_TIME, slot_start))  # function arguments
@@ -48,7 +47,7 @@ def main():
     try:
         while process.is_alive():
             # Transmissions here:
-            if slot_start.value == True:
+            if slot_start.value == 1:
                 t += 1
             else:
                 f += 1
@@ -58,7 +57,7 @@ def main():
     print('microseconds at slot start:', t)
     print('microseconds mid-slot:', f)
 
-    example_poisson()
+    # example_poisson()
 
 
 class App:
@@ -117,9 +116,9 @@ def slot_simulation(duration, slot_start):
     print('Simulation start')
 
     while True:
-        slot_start.value = False
+        slot_start.value = 0
         time.sleep(0.000009)
-        slot_start.value = True
+        slot_start.value = 1
         time.sleep(0.000001)
         i += 1
         if time.time() >= end:
