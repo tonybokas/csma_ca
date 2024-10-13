@@ -36,8 +36,11 @@ throughput = collisions = fairness = 0  # to-do: use None instead?
 
 
 def main():
-    slot_start = Value('i', False)
-    process = Process(target=slot_simulation, args=(SIM_TIME, slot_start))
+    slot_start = Value('i', False)  # variable typecode and value
+
+    process = Process(target=slot_simulation,       # target function
+                      args=(SIM_TIME, slot_start))  # function arguments
+
     process.start()
 
     t = f = 0
@@ -55,7 +58,7 @@ def main():
     print('microseconds at slot start:', t)
     print('microseconds mid-slot:', f)
 
-    # example_poisson()
+    example_poisson()
 
 
 class App:
