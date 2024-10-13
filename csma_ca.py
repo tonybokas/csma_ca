@@ -2,39 +2,128 @@
 
 # Authors: Antonios J. Bokas & Jamie Cookson
 
+import time
 import random
+from multiprocessing import Process, Value
 
 import numpy as np
 import seaborn as sb
 from matplotlib import pyplot
 
-
 # To-do: What is the difference between λ_A and λ_C?
 
+# CONSTANTS
+
+# Network:
+BW = 12 * 10**6   # bandwidth in bits/sec
+FRAME = 1500 * 8  # frame size in bits
+
+# Slot allocations:
+SLOT = 10                   # micro sec
+ACK = RTS = CTS = SLOT * 3  # acknowledgment, request- and clear-to-send
+DIFS = SLOT * 4             # distributed interframe space
+SIFS = SLOT * 2             # short interframe space
+CW_MAX = SLOT * 1024        # contention window limit
+
+# Simulation:
+SIM_TIME = 10                               # simulation time sec
+ARRIVALS = [100, 200, 300, 500, 700, 1000]  # arrival rate in frames/sec
+
+# VARIABLES
+
+cw = SLOT * 8  # contention window
+throughput = collisions = fairness = 0  # to-do: use None instead?
+
+
 def main():
-    # CONSTANTS
+    slot_start = Value('i', False)
+    process = Process(target=slot_simulation, args=(SIM_TIME, slot_start))
+    process.start()
 
-    # Network:
-    BW = 12 * 10**6   # bandwidth in bits/sec
-    FRAME = 1500 * 8  # frame size in bits
+    t = f = 0
 
-    # Slot allocations:
-    SLOT = 10                   # micro sec
-    ACK = RTS = CTS = SLOT * 3  # acknowledgment, request- and clear-to-send
-    DIFS = SLOT * 4             # distributed interframe space
-    SIFS = SLOT * 2             # short interframe space
-    CW_MAX = SLOT * 1024        # contention window limit
+    try:
+        while process.is_alive():
+            # Transmissions here:
+            if slot_start.value == True:
+                t += 1
+            else:
+                f += 1
+    finally:
+        process.join()
 
-    # Simulation:
-    SIM_TIME = 10 * 10**6                       # simulation time in micro sec
-    ARRIVALS = [100, 200, 300, 500, 700, 1000]  # arrival rate in frames/sec
+    print('microseconds at slot start:', t)
+    print('microseconds mid-slot:', f)
 
-    # VARIABLES
+    # example_poisson()
 
-    cw = SLOT * 8  # contention window
-    throughput, collisions, fairness = 0  # to-do: use None instead?
 
-    example_poisson()
+class App:
+    def __init__(self, station):
+        self.station = station
+
+    def buffer_frame(self):
+        pass
+
+
+class Station:
+    def __init__(self, c_domain, access_pt):
+        self.c_domain = c_domain
+        self.access_pt = access_pt
+        self.cw = None
+        self.backoff = None
+
+    def run(self):
+        pass
+
+    def check_buffer(self):
+        pass
+
+    def select_backoff(self):
+        pass
+
+    def sense_channel(self):
+        pass
+
+    def freeze(self):
+        pass
+
+    def decrement_backoff(self):
+        self.backoff -= 1
+
+    def transmit(self):
+        pass
+
+    def double_cw(self):
+        pass
+
+
+class AccessPoint:
+    def __init__(self, c_domain):
+        self.c_domain = c_domain
+
+    def ack(station):
+        pass
+
+
+def slot_simulation(duration, slot_start):
+    i = 0
+    start = time.time()
+    end = start + duration
+
+    print('Simulation start')
+
+    while True:
+        slot_start.value = False
+        time.sleep(0.000009)
+        slot_start.value = True
+        time.sleep(0.000001)
+        i += 1
+        if time.time() >= end:
+            break
+
+    print('Simulation end')
+    print('Slots simulated:', i)
 
 
 def example_poisson():
