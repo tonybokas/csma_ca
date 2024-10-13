@@ -78,7 +78,10 @@ class AccessPoint:
     def __init__(self, c_domain):
         self.c_domain = c_domain
 
-    def ack(station):
+    def run(self):
+        pass
+
+    def ack(self, station):
         pass
 
 
@@ -130,6 +133,10 @@ def main():
                 t += 1  # transmit
             else:
                 f += 1  # gotta wait
+
+    except Exception as e:
+        raise e
+
     finally:
         process.join()
 
