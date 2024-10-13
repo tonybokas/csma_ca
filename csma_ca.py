@@ -48,9 +48,34 @@ class Station:
         self.access_pt = access_pt
         self.cw = None
         self.backoff = None
+        self.awaiting_ack = False
+        self.channel_busy = False
+        self.ack_received = False
 
     def run(self):
-        pass
+        frame = self.check_buffer()
+
+        if not frame:
+            return
+
+        self.sense_channel()
+
+        trys = 0
+        while self.channel_busy:
+            self.select_backoff()
+            self.freeze()
+            self.decrement_backoff()
+            if trys == 10:
+                return 'Timeout'
+
+        self.transmit()
+
+        wait_time = 0
+        while self.awaiting_ack():
+            if self.ack_received:
+                return 'Success'
+            if wait_time == 10:
+                return 'Timeout no ack'
 
     def check_buffer(self):
         pass
@@ -58,8 +83,8 @@ class Station:
     def select_backoff(self):
         pass
 
-    def sense_channel(self):
-        pass
+    def sense_channel(self, channel_status):
+        self.channel_busy = True
 
     def freeze(self):
         pass
@@ -68,7 +93,7 @@ class Station:
         self.backoff -= 1
 
     def transmit(self):
-        pass
+        self.awaiting_ack = True
 
     def double_cw(self):
         pass
@@ -143,7 +168,7 @@ def main():
     print('microseconds at slot start:', t)
     print('microseconds mid-slot:', f)
 
-    # example_poisson()
+    example_poisson()
 
 
 if __name__ == '__main__':
