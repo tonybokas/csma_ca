@@ -34,32 +34,6 @@ cw = SLOT * 8  # contention window
 throughput = collisions = fairness = 0  # to-do: use None instead?
 
 
-def main():
-    slot_start = Value('i', 0)  # variable typecode and value
-
-    process = Process(target=slot_simulation,       # target function
-                      args=(SIM_TIME, slot_start))  # function arguments
-
-    process.start()
-
-    t = f = 0
-
-    try:
-        while process.is_alive():
-            # Transmissions here:
-            if slot_start.value == 1:
-                t += 1
-            else:
-                f += 1
-    finally:
-        process.join()
-
-    print('microseconds at slot start:', t)
-    print('microseconds mid-slot:', f)
-
-    # example_poisson()
-
-
 class App:
     def __init__(self, station):
         self.station = station
@@ -137,6 +111,32 @@ def example_poisson():
     plot.set(title='Poisson Distribution', xlabel='event', ylabel='count')
     pyplot.tight_layout()
     pyplot.show()
+
+
+def main():
+    slot_start = Value('i', 0)  # variable typecode and value
+
+    process = Process(target=slot_simulation,       # target function
+                      args=(SIM_TIME, slot_start))  # function arguments
+
+    process.start()
+
+    t = f = 0
+
+    try:
+        while process.is_alive():
+            # Transmissions here:
+            if slot_start.value == 1:
+                t += 1  # transmit
+            else:
+                f += 1  # gotta wait
+    finally:
+        process.join()
+
+    print('microseconds at slot start:', t)
+    print('microseconds mid-slot:', f)
+
+    # example_poisson()
 
 
 if __name__ == '__main__':
