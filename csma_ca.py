@@ -115,7 +115,7 @@ def slot_simulation(duration, slot_start):
     start = time.time()
     end = start + duration
 
-    print('Simulation start')
+    print('Simulation start:', start)
 
     while True:
         slot_start.value = 0
@@ -126,7 +126,7 @@ def slot_simulation(duration, slot_start):
         if time.time() >= end:
             break
 
-    print('Simulation end')
+    print('Simulation end:', end)
     print('Slots simulated:', i)
 
 
@@ -168,7 +168,7 @@ def main():
     print('microseconds at slot start:', t)
     print('microseconds mid-slot:', f)
 
-    example_poisson()
+    # example_poisson()
 
 
 if __name__ == '__main__':
