@@ -2,14 +2,13 @@
 
 # Authors: Antonios J. Bokas & Jamie Cookson
 
+import math
 import time
-from multiprocessing import Process, Value
 
+from numpy.random import uniform
 import numpy as np
 import seaborn as sb
 from matplotlib import pyplot
-
-# To-do: What is the difference between λ_A and λ_C?
 
 # CONSTANTS
 
@@ -25,8 +24,8 @@ SIFS = SLOT * 2             # short interframe space
 CW_MAX = SLOT * 1024        # contention window limit
 
 # Simulation:
-SIM_TIME = 10                               # simulation time in sec
-ARRIVALS = [100, 200, 300, 500, 700, 1000]  # arrival rate in frames/sec
+SIM_TIME = 10                                   # simulation time in sec
+ARRIVAL_RATE = [100, 200, 300, 500, 700, 1000]  # arrival rate in frames/sec
 
 # VARIABLES
 
@@ -53,6 +52,8 @@ class Station:
         self.ack_received = False
 
     def run(self):
+
+        # Pseudocode of station behvaior:
         frame = self.check_buffer()
 
         if not frame:
@@ -110,26 +111,6 @@ class AccessPoint:
         pass
 
 
-def slot_simulation(duration, slot_start):
-    i = 0
-    start = time.time()
-    end = start + duration
-
-    print('Simulation start:', start)
-
-    while True:
-        slot_start.value = 0
-        time.sleep(0.000009)
-        slot_start.value = 1
-        time.sleep(0.000001)
-        i += 1
-        if time.time() >= end:
-            break
-
-    print('Simulation end:', end)
-    print('Slots simulated:', i)
-
-
 def example_poisson():
     sample = np.random.poisson(5, 100)
     print('Sample data:')
@@ -142,32 +123,31 @@ def example_poisson():
 
 
 def main():
-    slot_start = Value('i', 0)  # variable typecode and value
+    start = time.time() # start time
+    end = start + 10    # start time plus 10 seconds
 
-    process = Process(target=slot_simulation,       # target function
-                      args=(SIM_TIME, slot_start))  # function arguments
+    # Note: time.time() defaults to seconds, not microseconds
 
-    process.start()
+    # This is really just a placeholder for now:
+    print('Simulation start:', start)
 
-    t = f = 0
+    # Selecting the first arrival rate for now. Later we will iterate through
+    # the others:
+    ar = ARRIVAL_RATE[0]
 
-    try:
-        while process.is_alive():
-            # Transmissions here:
-            if slot_start.value == 1:
-                t += 1  # transmit
-            else:
-                f += 1  # gotta wait
+    # 1. Create uniform distribution as an array.
+    # 2. Convert the distribution values per Appendix 1 equation and save
+    #    updated array values to variable X.
+    X = (-1/ar) * np.log(1-uniform(0, 1, ar*10))
+    print(X[:10])  # display first ten elements
 
-    except Exception as e:
-        raise e
+    # View the distribution shape:
+    sb.displot(kind='hist', x=X)
+    pyplot.show()
 
-    finally:
-        process.join()
+    print('Simulation end:', end)
 
-    print('microseconds at slot start:', t)
-    print('microseconds mid-slot:', f)
-
+    # Placeholder, but it will eventually generate the graphs after each run:
     # example_poisson()
 
 
