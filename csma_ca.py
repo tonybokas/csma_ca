@@ -159,7 +159,7 @@ def main():
     # supposed to flow along according to the slot and then end after 10
     # seconds. This means that each iteration of the main component of the
     # script needs to equal one slot. This allows the activities between the
-    # simulated entities the occur in a more realistic way. The only other way
+    # simulated entities to occur in a more realistic way. The only other way
     # to achieve this parallelism is to have multi-threading, which is not the
     # objective:
 
