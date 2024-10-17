@@ -18,8 +18,7 @@ import time
 from dataclasses import dataclass
 from random import randint
 
-from numpy import log
-from numpy.random import poisson, uniform
+import numpy as np
 import seaborn as sb
 from matplotlib import pyplot
 
@@ -54,11 +53,21 @@ class App:
 
     def generate_traffic(self, rate):
         # Create uniform distribution as an array:
-        U = uniform(0, 1, rate * 10)
+        U = np.random.uniform(0, 1, rate * 10)
 
         # Convert the distribution values per Appendix 1 equation and save
         # updated array values to variable X:
-        X = (-1 / rate) * log(1 - U)
+        X = (-1 / rate) * np.log(1 - U)
+
+        # Make X values positive integers per instructions. Find power of 10
+        # that makes smallest number in array greater than one:
+        p, m = 0, np.min(X)
+
+        while m < 1:
+            m *= 10
+            p += 1
+
+        X = np.round(X * 10**p)  # apply that power of 10 to all X and round
 
         # Convert to lists for better functionality:
         self.frames = list(U)
@@ -215,7 +224,7 @@ def main():
 
 
 def example_poisson():
-    sample = poisson(5, 100)
+    sample = np.random.poisson(5, 100)
     print('Sample data:')
     print(sample)
 
