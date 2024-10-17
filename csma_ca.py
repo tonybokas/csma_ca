@@ -3,15 +3,8 @@
 # Authors: Antonios J. Bokas & Jamie Cookson
 
 # To-do:
-# - In the project directions, it shows X values as follows:
-#    X = {985, 789, 1045, 1140}
-#   but I don't understand how he got whole numbers here. The formula he wants
-#   us to use for U and X yield demicals between 0, 1 (also per instructions)
-#
 # - Steps (d) and (e) not implemented yet
-#
 # - Not all nuances of directions implemented yet, many constants still unused
-#
 # - Script not yet tested
 
 import time
