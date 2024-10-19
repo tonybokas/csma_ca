@@ -76,7 +76,7 @@ class Station:
 
     def sense_channel(self):
         if len(self.domain.trans) > 1:
-            return  # to-do: handle collision!
+            return
         elif self.domain.trans[0]['data']:
             self.trans = self.domain.trans[0]
             self.collisions = self.cw = 0
