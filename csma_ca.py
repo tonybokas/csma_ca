@@ -3,8 +3,7 @@
 # Authors: Antonios J. Bokas & Jamie Cookson
 
 # To-do:
-# - Steps (d) and (e) not implemented yet
-# - Not all nuances of directions implemented yet, many constants still unused
+# - Not all directions implemented yet, some constants still unused
 # - Script not yet tested
 
 import time
@@ -26,6 +25,7 @@ SLOT_SIZE = 10                   # slot length in micro sec
 ACK = RTS = CTS = SLOT_SIZE * 3  # acknowledgment, request- and clear-to-send
 DIFS = SLOT_SIZE * 4             # distributed interframe space
 SIFS = SLOT_SIZE * 2             # short interframe space
+CW = SLOT_SIZE * 8               # base contention window
 CW_MAX = SLOT_SIZE * 1024        # contention window limit
 
 # Simulation:
@@ -52,19 +52,9 @@ class App:
         # updated array values to variable X:
         X = (-1 / rate) * np.log(1 - U)
 
-        # Make X values positive integers per instructions. Find power of 10
-        # that makes smallest number in array greater than one:
-        p, m = 0, np.min(X)
-
-        while m < 1:
-            m *= 10
-            p += 1
-
-        X = np.round(X * 10**p)  # apply that power of 10 to all X and round
-
         # Convert to lists for better functionality:
-        self.frames = list(U)
-        self.write_times = list(X)
+        self.frames = list(scale_values(U))
+        self.write_times = list(scale_values(X))
         self.next_write = 0.0
 
     def buffer_frame(self, now):
@@ -79,39 +69,53 @@ class Station:
         self.access_pt: AccessPoint = None
         self.buffer: list = []
         self.difs: int = DIFS
-        self.nav: int = 0
-        self.backoff: int = randint(0, self.contention_w)
-        self.contention_w: int = SLOT_SIZE * 8
+        self.trans: dict = {'to': None, 'from': None, 'data': None}
+        self.backoff: int = randint(0, CW)
+        self.cw: int = 0
         self.awaiting_ack: bool = False
 
     def sense_channel(self):
-        if len(self.domain.nav) > 1:
+        if len(self.domain.trans) > 1:
             return  # to-do: handle collision!
-        elif self.domain.nav:
-            self.nav = self.domain.nav[0]
+        elif self.domain.trans[0]['data']:
+            self.trans = self.domain.trans[0]
+            self.collisions = self.cw = 0
 
     def freeze(self):
-        if self.nav:
-            self.nav -= 1
+        if self.trans['data']:
+            self.trans -= 1
         else:
             self.difs = DIFS
 
     def transmit(self):
-        self.domain.nav.append(self.buffer[0])
+        self.trans['to'] = self.access_pt
+        self.trans['from'] = self
+        self.trans['data'] = self.buffer[0]
+        self.domain.trans.append(self.trans)
         self.awaiting_ack = True
 
-    def double_contention_w(self):
-        pass
+    def double_cw(self):
+        if self.cw <= CW_MAX:
+            self.cw = CW * 2**self.collisions
+
+        # Backoff fool...
+        self.backoff = randint(0, self.cw)
+        self.collisions += 1
 
 
 class AccessPoint:
     def __init__(self):
         self.domain: CollisionDomain = None
-        self.nav: int = 0
+        self.trans: dict = {'to': None, 'from': None, 'data': None}
+        self.sifs: int = SIFS
+
+    def decrement_sifs(self):
+        self.sifs -= 1
 
     def ack(self):
-        # To-do: Ack which station? Probably need to store dict in domain.nav:
-        pass
+        self.domain.trans[0]['to'] = self.domain['from']
+        self.domain.trans[0]['from'] = self
+        self.domain.trans[0]['data'] = ACK
 
 
 @dataclass
@@ -119,7 +123,22 @@ class CollisionDomain:
     nav: list = []
 
     def clear(self):
-        self.nav = []
+        self.trans = []
+
+
+def scale_values(array: np.array) -> np.array:
+    # Make array positive integers per project example. Find power of 10
+    # that makes smallest number greater than one and apply to whole array:
+    p, m = 0, np.min(array)
+
+    if m < 0:
+        raise ValueError(f'Expected positive numbers only, got {m}')
+
+    while m < 1:
+        m *= 10
+        p += 1
+
+    return np.round(array * 10**p)  # apply power of 10 and round
 
 
 def main():
@@ -166,49 +185,76 @@ def main():
     # objective:
 
     while True:
-        now = time.time()
+        now = time.time()  # get time every iteration
 
+        # Exit the loop if time equals end time:
         if now >= end:
             break
 
         slot += 1
 
+        # Stack frames onto station buffer
         for app in apps:
             app.buffer_frame(now - end + SIM_TIME)
 
         for station in stations:
-            if not any(station.buffer):
-                continue
+            if not any(station.buffer):  # nothing for this station to send
+                continue                 # jump to next station
 
-            if station.difs:
+            # Only one of these happen per slot iteration:
+
+            if station.cw:
+                station.backoff -= 1  # to-do: might make this a function
+
+            elif station.difs:
                 station.sense_channel()
 
-            elif station.nav:
+            elif station.trans:
                 station.freeze()
 
             elif station.backoff:
                 station.backoff -= 1
                 station.sense_channel()
 
+            elif station.awaiting_ack:
+                station.awaiting_ack = False
+
             else:
                 station.transmit()
 
-        if len(domain.nav) > 1:
-            # There is a collision. Resume the loop so the stations can
-            # address it:
+        # The following domain checks occur each slot iteration. This section
+        # represents the "transfer through the ether":
+
+        # There is a collision because the domain object has more than one
+        # transmission dict object in its list:
+        if len(domain.trans) > 1:
+            for station in stations:
+                station.double_cw()
+                domain.trans.clear()
+
             continue
 
-        if domain.nav and not access_pt.nav:
-            access_pt.nav = domain.nav[0]
+        if not domain.trans[0]['data']:
+            domain.trans.clear()
+            # To-do: decrement a SIFS wait time for stations too?
+            access_pt.decrement_sifs() if access_pt.sifs else access_pt.ack()
 
-        if domain.nav:
-            # The frames are transmiting through the domain to the
-            # access point:
-            domain.nav[0] -= 1
-            access_pt.nav -= 1
+            continue
 
-            if not access_pt.nav:
-                access_pt.ack()
+        # Each domain host takes note of the domain transmissions:
+        if not access_pt.trans['data']:
+            access_pt.trans = domain.trans[0].copy()
+
+        for station in stations:
+            if not station.trans['data']:
+                station.trans = domain.trans[0].copy()
+
+        # Frames are transmiting through the domain "ether":
+        domain.trans[0]['data'] -= 1
+        access_pt.trans['data'] -= 1
+
+        for station in stations:
+            station.trans['data'] -= 1
 
     print('Simulation end:', end)
 
