@@ -126,6 +126,17 @@ class CollisionDomain:
         self.trans = []
 
 
+def example_poisson():
+    sample = np.random.poisson(5, 100)
+    print('Sample data:')
+    print(sample)
+
+    plot = sb.displot(data=sample, kind='hist', bins=14)
+    plot.set(title='Poisson Distribution', xlabel='event', ylabel='count')
+    pyplot.tight_layout()
+    pyplot.show()
+
+
 def scale_values(array: np.array) -> np.array:
     # Make array positive integers per project example. Find power of 10
     # that makes smallest number greater than one and apply to whole array:
@@ -262,17 +273,6 @@ def main():
 
     # Placeholder, will eventually generate the graphs after each run:
     # example_poisson()
-
-
-def example_poisson():
-    sample = np.random.poisson(5, 100)
-    print('Sample data:')
-    print(sample)
-
-    plot = sb.displot(data=sample, kind='hist', bins=14)
-    plot.set(title='Poisson Distribution', xlabel='event', ylabel='count')
-    pyplot.tight_layout()
-    pyplot.show()
 
 
 if __name__ == '__main__':
