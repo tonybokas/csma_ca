@@ -234,6 +234,8 @@ def main():
 
             continue
 
+        # We have decremented out all the transmission data elsewhere. Clear
+        # the transmission from the "ether" and start the SIFS clock:
         if not domain.trans[0]['data']:
             domain.trans.clear()
             # To-do: decrement a SIFS wait time for stations too?
