@@ -27,8 +27,7 @@ CW = SLOT_SIZE * 8               # base contention window
 CW_MAX = SLOT_SIZE * 1024        # contention window limit
 
 # Simulation:
-# SIM_TIME = 10                                   # simulation time in sec
-SIM_TIME = 1                                   # simulation time in sec
+SIM_TIME = 10                                   # simulation time in sec
 ARRIVAL_RATE = [100, 200, 300, 500, 700, 1000]  # arrival rate in frames/sec
 
 # VARIABLES
@@ -268,8 +267,7 @@ def main():
             elif any(station.buffer):
                 station.try_send()
 
-        domain.transmissions = 0
-        domain.nav = 0
+        domain.transmissions = domain.nav = 0
 
     print(f'Simulation end: {end}\n')
 
