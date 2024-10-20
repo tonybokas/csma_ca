@@ -4,7 +4,6 @@
 
 # To-do:
 # - Not all directions implemented yet, some constants still unused
-# - Script not yet tested
 
 import time
 from random import randint
@@ -62,7 +61,7 @@ class App:
 
         # Convert to lists for better functionality:
         self.frames = [int(i) for i in scale_values(U)]
-        self.write_times = [i for i in X]
+        self.write_times = [float(i) for i in X]
 
     def try_buffer_frame(self, slot):
         if any(self.frames) and self.next_write <= slot:
