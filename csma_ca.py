@@ -46,8 +46,8 @@ class App:
     def state(self):
         s = f'{self}:\n'
         s += f'    station: {self.station}\n'
-        s += f'    next 3 frames: {self.frames[:3]}\n'
-        s += f'    next 3 write_times: {self.write_times[:3]}\n'
+        s += f'    frames (next 3): {self.frames[:3]}\n'
+        s += f'    write_times (next 3): {self.write_times[:3]}\n'
         s += f'    next_write: {self.next_write}\n'
         return s
 
@@ -89,11 +89,11 @@ class Station:
         s = f'{self}:\n'
         s += f'    domain: {self.domain}\n'
         s += f'    access_pt: {self.access_pt}\n'
-        s += f'    buffer first 3: {self.buffer[:3]}\n'
+        s += f'    buffer (first 3): {self.buffer[:3]}\n'
         s += f'    difs: {self.difs}\n'
         s += f'    backoff: {self.backoff}\n'
         s += f'    sifs: {self.sifs}\n'
-        s += f'    wait: {self.freeze_time}\n'
+        s += f'    freeze_time: {self.freeze_time}\n'
         s += f'    collisions: {self.collisions}\n'
         s += f'    cw: {self.cw}\n'
         s += f'    sending: {self.sending}\n'
