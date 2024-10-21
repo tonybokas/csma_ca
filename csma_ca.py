@@ -20,6 +20,10 @@
 # - I will soon add some more variables to try and track throughout,
 #   collisions, and fairness. I also will plot and save the results for
 #   each run.
+#
+# - Still need to implement hidden terminals and virtual carrier sensing.
+#   It will be kind of a hustle, but it should not require a huge change
+#   to the script.
 
 import time
 from random import randint
