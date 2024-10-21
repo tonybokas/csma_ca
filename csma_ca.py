@@ -3,7 +3,23 @@
 # Authors: Antonios J. Bokas & Jamie Cookson
 
 # To-do:
-# - Not all directions implemented yet, some constants still unused
+# - Not sure if we are supposed to use bandwidth or not. Is "arrival rate"
+#   the defacto bandwidth?
+#
+# - If I scale the X values to be integers like the example, the simulation
+#   doesn't work. The inter-arrival times are too large.
+#
+# - I'm not sure if prof. will be ok with use buffering the frames as slots,
+#   but it works better that way. Everything else is expressed as slots. See
+#   try_buffer_frame() method of App
+#
+# - You can run the simulation for all arrival times. Some cap off at even
+#   numbers. I'm not sure if that is good or bad. If you want to run it for
+#   one arrival time, edit the ARRIVAL_RATE list.
+#
+# - I will soon add some more variables to try and track throughout,
+#   collisions, and fairness. I also will plot and save the results for
+#   each run.
 
 import time
 from random import randint
@@ -15,7 +31,7 @@ from matplotlib import pyplot
 # CONSTANTS
 
 # Network:
-BW = 12 * 10**6   # bandwidth in bits/sec
+BW = 12           # bits per microsecond
 FRAME = 1500 * 8  # frame size in bits
 
 # Slot allocations:
@@ -51,20 +67,15 @@ class App:
         return s
 
     def generate_traffic(self, rate):
-        # Create uniform distribution as an array:
-        U = np.random.uniform(0, 1, rate * 10)
+        U = np.random.uniform(0, 1, rate*SLOT_SIZE)  # uniform distribution
+        X = (-1/rate) * np.log(1 - U)                # exponential distribution
 
-        # Convert the distribution values per Appendix 1 equation and save
-        # updated array values to variable X:
-        X = (-1 / rate) * np.log(1 - U)
-
-        # Convert to lists for better functionality:
-        self.frames = [int(i) for i in scale_values(U)]
+        # Convert to list for better functionality:
         self.write_times = [float(i) for i in X]
 
-    def try_buffer_frame(self, slot):
-        if any(self.frames) and self.next_write <= slot:
-            self.station.buffer.append(self.frames.pop(0))
+    def try_buffer_frame(self, slot, rate):
+        if self.write_times and self.next_write <= slot:
+            self.station.buffer.append(FRAME/rate)  # frames expressed as slots
             self.next_write += self.write_times.pop(0)
 
 
@@ -75,7 +86,6 @@ class Station:
         self.buffer: list = []
         self.difs = DIFS
         self.backoff = randint(0, CW)
-        self.sifs: int = 0
         self.freeze_time: int = 0
         self.transmission: int = 0
         self.collisions: int = 0
@@ -91,7 +101,6 @@ class Station:
         s += f'    buffer (first 3): {self.buffer[:3]}\n'
         s += f'    difs: {self.difs}\n'
         s += f'    backoff: {self.backoff}\n'
-        s += f'    sifs: {self.sifs}\n'
         s += f'    freeze_time: {self.freeze_time}\n'
         s += f'    collisions: {self.collisions}\n'
         s += f'    cw: {self.cw}\n'
@@ -101,7 +110,7 @@ class Station:
         return s
 
     def double_cw(self):
-        self.sending = False
+        self.sending = False  # forces resend of buffered frame
 
         if self.cw <= CW_MAX:
             self.cw = CW * 2**self.collisions
@@ -136,9 +145,7 @@ class AccessPoint:
         self.ack: int = 0
 
     def state(self):
-        s = f'{self}:\n'
-        s += f'    sifs: {self.sifs}\n '
-        return s
+        return f'{self}:\n    sifs: {self.sifs}\n    ack: {self.ack}\n'
 
     def try_ack(self, station):
         if self.sifs:
@@ -204,7 +211,7 @@ def example_poisson():
     pyplot.show()
 
 
-def main():
+def simulate(rate):
     # Create all the entities in the simulation:
     app_A = App()
     app_B = App()
@@ -227,7 +234,7 @@ def main():
 
     # Create app traffic:
     for app in apps:
-        app.generate_traffic(ARRIVAL_RATE[0])  # to-do: iterate
+        app.generate_traffic(rate)  # to-do: iterate
 
     # Set counters:
     start = time.time()     # start time
@@ -246,7 +253,7 @@ def main():
 
         # Stack frames onto station buffer:
         for app in apps:
-            app.try_buffer_frame(now - end + SIM_TIME)
+            app.try_buffer_frame(now - end + SIM_TIME, rate)
 
         for station in stations:
             if station.domain.transmissions > 1:
@@ -275,6 +282,11 @@ def main():
 
     # Placeholder, will eventually generate the graphs after each run:
     # example_poisson()
+
+
+def main():
+    for rate in ARRIVAL_RATE:
+        simulate(rate)
 
 
 if __name__ == '__main__':
