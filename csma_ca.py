@@ -9,7 +9,6 @@
 # - If I scale the X values to be integers like the example, the simulation
 #   doesn't work. The inter-arrival times are too large.
 #
-# - I'm not sure if prof. will be ok with use buffering the frames as slots,
 #   but it works better that way. Everything else is expressed as slots. See
 #   try_buffer_frame() method of App
 #
@@ -34,21 +33,19 @@ from matplotlib import pyplot
 
 # CONSTANTS
 
-# Network:
-BW = 12           # bits per microsecond
-FRAME = 1500 * 8  # frame size in bits
-
-# Slot allocations:
-SLOT_SIZE = 10                   # slot length in micro sec
-ACK = RTS = CTS = SLOT_SIZE * 3  # acknowledgment, request- and clear-to-send
-DIFS = SLOT_SIZE * 4             # distributed interframe space
-SIFS = SLOT_SIZE * 2             # short interframe space
-CW = SLOT_SIZE * 8               # base contention window
-CW_MAX = SLOT_SIZE * 1024        # contention window limit
-
-# Simulation:
-SIM_TIME = 10                                   # simulation time in sec
+ACK = RTS = CTS = 3
 ARRIVAL_RATE = [100, 200, 300, 500, 700, 1000]  # arrival rate in frames/sec
+BW = 12                                         # bits per microsecond
+CW = 8                                          # base contention window
+CW_MAX = 1024                                   # contention window limit
+DIFS = 4                                        # distributed interframe space
+FRAME = 1500 * 8                                # frame size in bits
+SIFS = 2                                        # short interframe space
+SIM_TIME = 10                                   # simulation time in sec
+SLOT_DURATION = 10                              # slot microseconds
+SLOT_SIZE = 0.00001                             # slot length in micro sec
+
+BITS_PER_SLOT = BW * SLOT_DURATION
 
 # VARIABLES
 
@@ -58,28 +55,25 @@ throughput = collisions = fairness = 0
 class App:
     def __init__(self):
         self.station: Station = None
-        self.frames: list = []
         self.write_times: list = []
         self.next_write: int = 0
 
     def state(self):
         s = f'{self}:\n'
         s += f'    station: {self.station}\n'
-        s += f'    frames (next 3): {self.frames[:3]}\n'
         s += f'    write_times (next 3): {self.write_times[:3]}\n'
         s += f'    next_write: {self.next_write}\n'
         return s
 
     def generate_traffic(self, rate):
-        U = np.random.uniform(0, 1, rate*SLOT_SIZE)  # uniform distribution
-        X = (-1/rate) * np.log(1 - U)                # exponential distribution
+        U = np.random.uniform(0, 1, rate*SIM_TIME)  # uniform dist
+        X = ((-1/rate) * np.log(1-U))/SLOT_SIZE     # exponential dist
+        self.write_times = [round(f) for f in X]    # use list functionality
+        self.next_write = self.write_times.pop(0)   # queue up the first write
 
-        # Convert to list for better functionality:
-        self.write_times = [float(i) for i in X]
-
-    def try_buffer_frame(self, slot, rate):
-        if self.write_times and self.next_write <= slot:
-            self.station.buffer.append(FRAME/rate)  # frames expressed as slots
+    def try_buffer_frame(self, slot):
+        if self.write_times and self.next_write == slot:
+            self.station.buffer.append(FRAME)
             self.next_write += self.write_times.pop(0)
 
 
@@ -126,13 +120,14 @@ class Station:
         if self.freeze_time:
             self.freeze_time -= 1
         else:
-            self.freeze_time = self.domain.nav
+            self.freeze_time = self.domain.nav  # change to AP domain
             self.difs = DIFS
 
     def try_send(self):
         if not self.sending:
             self.sending = True
-            self.domain.nav = self.transmission = self.buffer[0] + SIFS + ACK
+            self.transmission = self.buffer[0] / BITS_PER_SLOT + SIFS + ACK
+            self.domain.nav = self.transmission
             self.domain.transmissions += 1
 
         if self.transmission > 0:
@@ -255,14 +250,14 @@ def simulate(rate):
 
         slot += 1
 
-        # Stack frames onto station buffer:
         for app in apps:
-            app.try_buffer_frame(now - end + SIM_TIME, rate)
+            app.try_buffer_frame(slot)
 
         for station in stations:
-            if station.domain.transmissions > 1:
+            if station.domain.transmissions > 1:  # change to AP domain
                 station.double_cw()
 
+            # Change to AP domain:
             elif station.domain.transmissions == 1 and not station.sending:
                 station.freeze()
 
