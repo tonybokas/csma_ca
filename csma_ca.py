@@ -3,19 +3,6 @@
 # Authors: Antonios J. Bokas & Jamie Cookson
 
 # To-do:
-# - Not sure if we are supposed to use bandwidth or not. Is "arrival rate"
-#   the defacto bandwidth?
-#
-# - If I scale the X values to be integers like the example, the simulation
-#   doesn't work. The inter-arrival times are too large.
-#
-#   but it works better that way. Everything else is expressed as slots. See
-#   try_buffer_frame() method of App
-#
-# - You can run the simulation for all arrival times. Some cap off at even
-#   numbers. I'm not sure if that is good or bad. If you want to run it for
-#   one arrival time, edit the ARRIVAL_RATE list.
-#
 # - I will soon add some more variables to try and track throughout,
 #   collisions, and fairness. I also will plot and save the results for
 #   each run.
@@ -78,7 +65,7 @@ class App:
 
 
 class Station:
-    def __init__(self):
+    def __init__(self, vcs: bool = False):
         self.domain: CollisionDomain = None
         self.access_pt: AccessPoint = None
         self.buffer: list = []
@@ -91,6 +78,8 @@ class Station:
         self.sending: bool = False
         self.awaiting_ack: bool = False
         self.successes: int = 0
+        self.vcs: bool = vcs
+        self.rts: int = RTS
 
     def state(self):
         s = f'{self}:\n'
@@ -120,15 +109,29 @@ class Station:
         if self.freeze_time:
             self.freeze_time -= 1
         else:
-            self.freeze_time = self.domain.nav  # change to AP domain
+            self.freeze_time = self.domain.nav
             self.difs = DIFS
 
     def try_send(self):
+        # To-do: implement SIFS
+        if self.vcs:
+            if self.rts:
+                self.rts -= 1
+                self.backoff = SIFS
+                return
+            if self.access_pt.cts > 0:
+                self.domain.transmissions -= 1
+                self.access_pt.domain.transmissions += 1
+
         if not self.sending:
             self.sending = True
             self.transmission = self.buffer[0] / BITS_PER_SLOT + SIFS + ACK
+
             self.domain.nav = self.transmission
             self.domain.transmissions += 1
+
+            self.access_pt.domain.nav = self.transmission
+            self.access_pt.domain.transmissions += 1
 
         if self.transmission > 0:
             self.transmission -= 1
@@ -139,23 +142,32 @@ class Station:
 
 
 class AccessPoint:
-    def __init__(self):
-        self.sifs: int = 0
+    def __init__(self, vcs: bool = False):
+        self.domain: CollisionDomain = None
         self.ack: int = 0
+        self.sifs: int = 0
+        self.vcs: bool = vcs
+        self.cts: int = 0
 
     def state(self):
         return f'{self}:\n    sifs: {self.sifs}\n    ack: {self.ack}\n'
 
     def try_ack(self, station):
-        if self.sifs:
+        if self.domain.transmissions > 1:
+            return
+        elif self.sifs:
             self.sifs -= 1
         elif self.ack:
             self.ack -= 1
         else:
-            station.sending = False
+            self.domain.nav = 0             # testing
+            self.domain.transmissions -= 1  # testing
+
             station.domain.nav = 0
             station.domain.transmissions -= 1
-            station.awaiting_ack = False
+
+            station.sending = station.awaiting_ack = False
+            station.collisions = 0
             del station.buffer[0]
             station.successes += 1
 
@@ -172,31 +184,19 @@ class CollisionDomain:
         return s
 
 
-def scale_values(array: np.array) -> np.array:
-    # Make array positive integers per project example. Find power of 10
-    # that makes smallest number greater than one and apply to whole array:
-    p, m = 0, np.min(array)
-
-    if m < 0:
-        raise ValueError(f'Expected positive numbers only, got {m}')
-
-    while m < 1:
-        m *= 10
-        p += 1
-
-    return np.round(array * 10**p)  # apply power of 10 and round
-
-
-def simulation_state(slot, apps, stations, domain):
+def simulation_state(slot, apps, stations):
     print('Iteration:', slot)
 
-    for station in stations:
-        print(station.state())
-
+    print('App states:')
     for app in apps:
         print(app.state())
 
-    print(domain.state())
+    print('Station states:')
+    for station in stations:
+        print(station.state())
+
+    print('Access point state:')
+    print(stations[0].access_pt.state())
 
 
 def example_poisson():
@@ -210,18 +210,22 @@ def example_poisson():
     pyplot.show()
 
 
-def simulate(rate):
+def simulate(rate: int, hidden_terminals: bool, vcs: bool):
     # Create all the entities in the simulation:
     app_A = App()
     app_B = App()
     apps = [app_A, app_B]
 
-    station_A = Station()
-    station_B = Station()
+    if vcs:
+        station_A = Station(vcs=True)
+        station_B = Station(vcs=True)
+    else:
+        station_A = Station()
+        station_B = Station()
+
     stations = [station_A, station_B]
 
-    access_pt = AccessPoint()
-    domain = CollisionDomain()
+    access_pt = AccessPoint(vcs=True) if vcs else AccessPoint()
 
     # Connect the entities:
     app_A.station = station_A
@@ -229,7 +233,16 @@ def simulate(rate):
 
     for station in stations:
         station.access_pt = access_pt
-        station.domain = domain  # to-do: this will change for hidden terminals
+
+    # Conditional to set up single domain or hidden terminals:
+    if hidden_terminals:
+        station_A.domain = CollisionDomain()
+        station_B.domain = CollisionDomain()
+        access_pt.domain = CollisionDomain()
+    else:
+        station_A.domain = \
+        station_B.domain = \
+        access_pt.domain = CollisionDomain()
 
     # Create app traffic:
     for app in apps:
@@ -254,10 +267,9 @@ def simulate(rate):
             app.try_buffer_frame(slot)
 
         for station in stations:
-            if station.domain.transmissions > 1:  # change to AP domain
+            if station.domain.transmissions > 1:
                 station.double_cw()
 
-            # Change to AP domain:
             elif station.domain.transmissions == 1 and not station.sending:
                 station.freeze()
 
@@ -270,14 +282,21 @@ def simulate(rate):
             elif station.awaiting_ack:
                 access_pt.try_ack(station)
 
+                if station.backoff == 0:
+                    station.double_cw()
+                    station.backoff += SIFS
+
             elif any(station.buffer):
                 station.try_send()
 
-        domain.transmissions = domain.nav = 0
+        for station in stations:
+            station.domain.transmissions = station.domain.nav = 0
+
+        access_pt.domain.transmissions = access_pt.domain.nav = 0
 
     print(f'Simulation end: {end}\n')
 
-    simulation_state(slot, apps, stations, domain)
+    simulation_state(slot, apps, stations)
 
     # Placeholder, will eventually generate the graphs after each run:
     # example_poisson()
@@ -285,7 +304,7 @@ def simulate(rate):
 
 def main():
     for rate in ARRIVAL_RATE:
-        simulate(rate)
+        simulate(rate, False, True)
 
 
 if __name__ == '__main__':
