@@ -61,7 +61,7 @@ class Station:
         self.transmission: int = 0
         self.collisions: int = 0
         self.cw: int = 0
-        self.sending: bool = False
+        self.waiting: bool = True
         self.awaiting_ack: bool = False
 
         # Stat counters:
@@ -72,7 +72,7 @@ class Station:
         self.tot_collisions: int = 0
 
     def double_cw(self):
-        self.sending = False  # forces resend of buffered frame
+        self.waiting = True  # forces resend of buffered frame
 
         if self.cw <= CW_MAX:
             self.cw = CW * 2**self.collisions
@@ -89,8 +89,8 @@ class Station:
             self.difs = DIFS
 
     def try_send(self, start):
-        if not self.sending:
-            self.sending = True
+        if self.waiting:
+            self.waiting = False
             self.transmission = self.buffer[0] / BITS_PER_SLOT + SIFS + ACK
 
             self.domain.nav = self.transmission
@@ -146,7 +146,8 @@ class AccessPoint:
             station.domain.nav = 0
             station.domain.transmissions -= 1
 
-            station.sending = station.awaiting_ack = False
+            station.waiting = True
+            station.awaiting_ack = False
             station.collisions = 0
             station.tot_trans_size += station.buffer.pop(0)
             station.tot_successes += 1
@@ -175,7 +176,7 @@ def virtual_carrier_sensing(station, access_pt):
 def simulation(rate: int, ht: bool, vcs: bool):
     print(f'Simulation (rate={rate}, ht={ht}, vcs={vcs})')
 
-    # Create all entities in the simulation:
+    # Create apps and stations:
     app_A = App()
     app_B = App()
     apps = [app_A, app_B]
@@ -189,32 +190,34 @@ def simulation(rate: int, ht: bool, vcs: bool):
 
     stations = [station_A, station_B]
 
-    # Connect the entities:
+    # Connect apps to their stations:
     app_A.station = station_A
     app_B.station = station_B
 
+    # Create access point and connect the stations to it:
     access_pt = AccessPoint(vcs=True) if vcs else AccessPoint()
 
     for station in stations:
         station.access_pt = access_pt
 
-    # Conditional to set up single domain or hidden terminals:
+    # Create hidden terminals or single domain:
     if ht:
         station_A.domain = CollisionDomain()
         station_B.domain = CollisionDomain()
         access_pt.domain = CollisionDomain()
     else:
-        station_A.domain = station_B.domain = access_pt.domain = \
-            CollisionDomain()
+        station_A.domain = \
+        station_B.domain = \
+        access_pt.domain = CollisionDomain()
 
     # Create app traffic:
     for app in apps:
         app.generate_traffic(rate)
 
-    # Set counters:
-    start = time.time()     # start time
-    end = start + SIM_TIME  # start time plus simulation time
-    slot = 0                # slot counter
+    # Create simulation counters:
+    start = time.time()
+    end = start + SIM_TIME
+    slot = 0
 
     print(f'Start time: {start}')
 
@@ -233,7 +236,7 @@ def simulation(rate: int, ht: bool, vcs: bool):
             if station.domain.transmissions > 1:
                 station.double_cw()
 
-            elif station.domain.transmissions == 1 and not station.sending:
+            elif station.domain.transmissions == 1 and station.waiting:
                 station.freeze()
 
             elif station.difs:
@@ -243,11 +246,11 @@ def simulation(rate: int, ht: bool, vcs: bool):
                 station.backoff -= 1
 
             elif station.awaiting_ack:
-                access_pt.try_ack(station)
-
                 if station.backoff == 0:
                     station.double_cw()
                     station.backoff += SIFS
+
+                access_pt.try_ack(station)
 
             elif any(station.buffer):
                 if station.vcs and station.domain.all_clear != station:
