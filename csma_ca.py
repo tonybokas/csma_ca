@@ -2,18 +2,12 @@
 
 # Authors: Antonios J. Bokas & Jamie Cookson
 
-# To-do:
-# - Fix problems with VCS and hidden terminal. The logic is difficult to add.
-#   We need to go through it step by step to make sense of it. I made the logic
-#   more complex again, so it's a bit harder... hopefully tomorrow I can revisit.
-
 import time
 from random import randint
 
 import numpy as np
 import pandas as pd
 import seaborn as sb
-from matplotlib import pyplot
 
 # CONSTANTS
 
@@ -37,13 +31,6 @@ class App:
         self.write_times: list = []
         self.next_write: int = 0
 
-    def state(self):
-        s = f'{self}:\n'
-        s += f'    station: {self.station}\n'
-        s += f'    write_times (next 3): {self.write_times[:3]}\n'
-        s += f'    next_write: {self.next_write}\n'
-        return s
-
     def generate_traffic(self, rate):
         U = np.random.uniform(0, 1, rate*SIM_TIME)  # uniform dist
         X = ((-1/rate) * np.log(1-U))/SLOT_SIZE     # exponential dist
@@ -57,39 +44,32 @@ class App:
 
 
 class Station:
-    def __init__(self, virtual_cs: bool = False):
+    def __init__(self, vcs: bool = False):
+        # VCS attributes:
+        self.vcs: bool = vcs
+        self.rts: int = RTS if vcs else 0
+
+        # Domain attributes:
         self.domain: CollisionDomain = None
         self.access_pt: AccessPoint = None
+
+        # Transmission attributes:
         self.buffer: list = []
         self.difs = DIFS
         self.backoff = randint(0, CW)
-        self.freeze_time: int = 0
+        self.nav: int = 0
         self.transmission: int = 0
         self.collisions: int = 0
         self.cw: int = 0
         self.sending: bool = False
         self.awaiting_ack: bool = False
-        self.virtual_cs: bool = virtual_cs
-        self.rts: int = RTS
+
+        # Stat counters:
         self.transfer_timer: int = 0
         self.tot_trans_size: int = 0
         self.tot_trans_time: int = 0
         self.tot_successes: int = 0
         self.tot_collisions: int = 0
-
-    def state(self):
-        s = f'{self}:\n'
-        s += f'    domain: {self.domain}\n'
-        s += f'    access_pt: {self.access_pt}\n'
-        s += f'    buffer (first 3): {self.buffer[:3]}\n'
-        s += f'    difs: {self.difs}\n'
-        s += f'    backoff: {self.backoff}\n'
-        s += f'    freeze_time: {self.freeze_time}\n'
-        s += f'    collisions: {self.collisions}\n'
-        s += f'    cw: {self.cw}\n'
-        s += f'    sending: {self.sending}\n'
-        s += f'    awaiting_ack: {self.awaiting_ack}\n'
-        return s
 
     def double_cw(self):
         self.sending = False  # forces resend of buffered frame
@@ -102,26 +82,13 @@ class Station:
         self.tot_collisions += 1
 
     def freeze(self):
-        if self.freeze_time:
-            self.freeze_time -= 1
-        elif self.virtual_cs:
-            self.freeze_time = self.access_pt.domain.nav
-            self.difs = DIFS
+        if self.nav:
+            self.nav -= 1
         else:
-            self.freeze_time = self.domain.nav
+            self.nav = self.domain.nav
             self.difs = DIFS
 
     def try_send(self, start):
-        if self.virtual_cs:
-            if self.rts:
-                self.rts -= 1
-                return
-            elif self.domain.all_clear == self:
-                pass
-            else:
-                self.freeze()
-                return
-
         if not self.sending:
             self.sending = True
             self.transmission = self.buffer[0] / BITS_PER_SLOT + SIFS + ACK
@@ -138,37 +105,40 @@ class Station:
         else:
             self.access_pt.sifs = SIFS
             self.access_pt.ack = ACK
+            self.rts = RTS if self.vcs else 0
             self.awaiting_ack = True
 
 
 class AccessPoint:
-    def __init__(self, virtual_cs: bool = False):
+    def __init__(self, vcs: bool = False):
+        # VCS attribute:
+        self.cts: int = CTS if vcs else 0
+
+        # Domain attribute:
         self.domain: CollisionDomain = None
+
+        # Transmission attributes:
         self.ack: int = 0
         self.sifs: int = 0
-        self.virtual_cs: bool = virtual_cs
-        self.cts: int = CTS
+
+        # Stat counters:
         self.tot_collisions: int = 0
 
-    def state(self):
-        return f'{self}:\n    sifs: {self.sifs}\n    ack: {self.ack}\n'
-
-    def try_clear(self, station):
-        if self.cts > 0:
-            self.cts -= 1
-        elif not self.domain.all_clear:
-            self.domain.nav = station.transmission + SIFS
-            self.domain.transmissions += 1
-            self.domain.all_clear = station
+    def clear(self, station):
+        self.domain.all_clear = station
+        self.cts = CTS
 
     def try_ack(self, station):
         if self.domain.transmissions > 1:
             self.tot_collisions += 1
             return
+
         elif self.sifs:
             self.sifs -= 1
+
         elif self.ack:
             self.ack -= 1
+
         else:
             self.domain.nav = 0             # testing
             self.domain.transmissions -= 1  # testing
@@ -190,69 +160,46 @@ class CollisionDomain:
         self.nav: int = 0
         self.all_clear: Station = None
 
-    def state(self):
-        s = f'{str(self.__class__.__name__)}:\n'
-        s += f'    transmissions: {self.transmissions}\n'
-        s += f'    nav: {self.nav}\n'
-        return s
+
+def virtual_carrier_sensing(station, access_pt):
+    if station.domain.all_clear is not None:
+        station.freeze()
+    elif station.rts:
+        station.rts -= 1
+    elif access_pt.cts:
+        access_pt.cts -= 1
+    else:
+        access_pt.clear(station)
 
 
-def simulation_state(slot, apps, stations):
-    print('Iteration:', slot)
+def simulation(rate: int, ht: bool, vcs: bool):
+    print(f'Simulation (rate={rate}, ht={ht}, vcs={vcs})')
 
-    print('App states:')
-    for app in apps:
-        print(app.state())
-
-    print('Station states:')
-    for station in stations:
-        print(station.state())
-
-    print('Access point state:')
-    print(stations[0].access_pt.state())
-
-
-def example_poisson():
-    sample = np.random.poisson(5, 100)
-    print('Sample data:')
-    print(sample)
-
-    plot = sb.displot(data=sample, kind='hist', bins=14)
-    plot.set(title='Poisson Distribution', xlabel='event', ylabel='count')
-    pyplot.tight_layout()
-    pyplot.show()
-
-
-def simulation(rate: int, hidden_t: bool, virtual_cs: bool):
-    print(f'Simulation (rate={rate}, '
-          f'hidden_t={hidden_t}, '
-          f'virtual_cs={virtual_cs})')
-
-    # Create all the entities in the simulation:
+    # Create all entities in the simulation:
     app_A = App()
     app_B = App()
     apps = [app_A, app_B]
 
-    if virtual_cs:
-        station_A = Station(virtual_cs=True)
-        station_B = Station(virtual_cs=True)
+    if vcs:
+        station_A = Station(vcs=True)
+        station_B = Station(vcs=True)
     else:
         station_A = Station()
         station_B = Station()
 
     stations = [station_A, station_B]
 
-    access_pt = AccessPoint(virtual_cs=True) if virtual_cs else AccessPoint()
-
     # Connect the entities:
     app_A.station = station_A
     app_B.station = station_B
+
+    access_pt = AccessPoint(vcs=True) if vcs else AccessPoint()
 
     for station in stations:
         station.access_pt = access_pt
 
     # Conditional to set up single domain or hidden terminals:
-    if hidden_t:
+    if ht:
         station_A.domain = CollisionDomain()
         station_B.domain = CollisionDomain()
         access_pt.domain = CollisionDomain()
@@ -265,9 +212,9 @@ def simulation(rate: int, hidden_t: bool, virtual_cs: bool):
         app.generate_traffic(rate)
 
     # Set counters:
-    start = time.time()                     # start time
-    end = start + SIM_TIME                  # start time plus simulation time
-    slot = 0                                # slot counter
+    start = time.time()     # start time
+    end = start + SIM_TIME  # start time plus simulation time
+    slot = 0                # slot counter
 
     print(f'Start time: {start}')
 
@@ -302,13 +249,11 @@ def simulation(rate: int, hidden_t: bool, virtual_cs: bool):
                     station.double_cw()
                     station.backoff += SIFS
 
-            elif station.virtual_cs:
-                if station.rts:
-                    station.rts -= 1
-                elif station.access_pt.cts:
-                    station.access_pt.try_clear(station)
-
             elif any(station.buffer):
+                if station.vcs and station.domain.all_clear != station:
+                    virtual_carrier_sensing(station, access_pt)
+                    continue
+
                 station.try_send(start=slot)
 
         for station in stations:
@@ -318,28 +263,25 @@ def simulation(rate: int, hidden_t: bool, virtual_cs: bool):
 
     print(f'End time: {end}\n')
 
-    # simulation_state(slot, apps, stations)
+    tot_A = station_A.tot_successes + station_A.tot_collisions
+    ttt_A = station_A.tot_trans_time
+    tts_A = station_A.tot_trans_size
 
-    tA = station_A.tot_successes + station_A.tot_collisions
-    tB = station_B.tot_successes + station_B.tot_collisions
-
-    ttt = station_A.tot_trans_time
-    tts = station_A.tot_trans_size
+    tot_B = station_B.tot_successes + station_B.tot_collisions
+    ttt_B = station_B.tot_trans_time
+    tts_B = station_B.tot_trans_size
 
     stats_A = {'station': 'A',
-               'throughput': tts/ttt if ttt else 0,
+               'throughput': tts_A/ttt_A if ttt_A else 0,
                'ap_collisions': access_pt.tot_collisions,
                'collisions': station_A.tot_collisions,
-               'fairness': tA / tB if tB else 0}
-
-    ttt = station_B.tot_trans_time
-    tts = station_B.tot_trans_size
+               'fairness': tot_A / tot_B if tot_B else 0}
 
     stats_B = {'station': 'B',
-               'throughput': tts/ttt if ttt else 0,
+               'throughput': tts_B/ttt_B if ttt_B else 0,
                'ap_collisions': access_pt.tot_collisions,
                'collisions': station_B.tot_collisions,
-               'fairness': tB / tA if tA else 0}
+               'fairness': tot_B / tot_A if tot_A else 0}
 
     return [stats_A, stats_B]
 
@@ -363,16 +305,16 @@ def main():
 
     for rate in ARRIVAL_RATE:
         for station_stats in simulation(rate, False, False):
-            collect_stats(rate, 'ht_f_vcs_f', station_stats, all_stats)
+            collect_stats(rate, 'DCF', station_stats, all_stats)
 
         for station_stats in simulation(rate, True, False):
-            collect_stats(rate, 'ht_t_vcs_f', station_stats, all_stats)
+            collect_stats(rate, 'DCF_HT', station_stats, all_stats)
 
         for station_stats in simulation(rate, False, True):
-            collect_stats(rate, 'ht_f_vcs_t', station_stats, all_stats)
+            collect_stats(rate, 'DCF_VCS', station_stats, all_stats)
 
         for station_stats in simulation(rate, True, True):
-            collect_stats(rate, 'ht_t_vcs_t', station_stats, all_stats)
+            collect_stats(rate, 'HT_VCS', station_stats, all_stats)
 
     print('Creating plots...')
 
@@ -419,6 +361,7 @@ def main():
     plot.savefig('collisions_A_B.png')
 
     print('Script complete.')
+
 
 if __name__ == '__main__':
     main()
