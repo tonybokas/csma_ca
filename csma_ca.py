@@ -71,7 +71,15 @@ class Station:
         self.tot_successes: int = 0
         self.tot_collisions: int = 0
 
+    def freeze(self):
+        if self.nav:
+            self.nav -= 1
+        else:
+            self.nav = self.domain.nav
+            self.difs = DIFS
+
     def double_cw(self):
+        self.domain.transmissions -= 1
         self.waiting = True  # forces resend of buffered frame
 
         if self.cw <= CW_MAX:
@@ -81,21 +89,12 @@ class Station:
         self.collisions += 1
         self.tot_collisions += 1
 
-    def freeze(self):
-        if self.nav:
-            self.nav -= 1
-        else:
-            self.nav = self.domain.nav
-            self.difs = DIFS
-
     def try_send(self, start):
         if self.waiting:
             self.waiting = False
             self.transmission = self.buffer[0] / BITS_PER_SLOT + SIFS + ACK
-
             self.domain.nav = self.transmission
             self.domain.transmissions += 1
-
             self.access_pt.domain.nav = self.transmission
             self.access_pt.domain.transmissions += 1
             self.transfer_timer = start
@@ -105,8 +104,10 @@ class Station:
         else:
             self.access_pt.sifs = SIFS
             self.access_pt.ack = ACK
-            self.rts = RTS if self.vcs else 0
             self.awaiting_ack = True
+            if self.vcs:
+                self.rts = RTS
+                self.access_pt.domain.cleared = None
 
 
 class AccessPoint:
@@ -125,7 +126,7 @@ class AccessPoint:
         self.tot_collisions: int = 0
 
     def clear(self, station):
-        self.domain.all_clear = station
+        self.domain.cleared = station
         self.cts = CTS
 
     def try_ack(self, station):
@@ -140,12 +141,10 @@ class AccessPoint:
             self.ack -= 1
 
         else:
-            self.domain.nav = 0             # testing
-            self.domain.transmissions -= 1  # testing
-
+            self.domain.nav = 0
+            self.domain.transmissions -= 1
             station.domain.nav = 0
             station.domain.transmissions -= 1
-
             station.waiting = True
             station.awaiting_ack = False
             station.collisions = 0
@@ -159,11 +158,11 @@ class CollisionDomain:
     def __init__(self):
         self.transmissions: int = 0
         self.nav: int = 0
-        self.all_clear: Station = None
+        self.cleared: Station = None
 
 
 def virtual_carrier_sensing(station, access_pt):
-    if station.domain.all_clear is not None:
+    if access_pt.domain.cleared is not None:
         station.freeze()
     elif station.rts:
         station.rts -= 1
@@ -253,16 +252,11 @@ def simulation(rate: int, ht: bool, vcs: bool):
                 access_pt.try_ack(station)
 
             elif any(station.buffer):
-                if station.vcs and station.domain.all_clear != station:
+                if station.vcs and access_pt.domain.cleared != station:
                     virtual_carrier_sensing(station, access_pt)
                     continue
 
                 station.try_send(start=slot)
-
-        for station in stations:
-            station.domain.transmissions = station.domain.nav = 0
-
-        access_pt.domain.transmissions = access_pt.domain.nav = 0
 
     print(f'End time: {end}\n')
 
@@ -277,13 +271,13 @@ def simulation(rate: int, ht: bool, vcs: bool):
     stats_A = {'station': 'A',
                'throughput': tts_A/ttt_A if ttt_A else 0,
                'ap_collisions': access_pt.tot_collisions,
-               'collisions': station_A.tot_collisions,
+               'station_collisions': station_A.tot_collisions,
                'fairness': tot_A / tot_B if tot_B else 0}
 
     stats_B = {'station': 'B',
                'throughput': tts_B/ttt_B if ttt_B else 0,
                'ap_collisions': access_pt.tot_collisions,
-               'collisions': station_B.tot_collisions,
+               'station_collisions': station_B.tot_collisions,
                'fairness': tot_B / tot_A if tot_A else 0}
 
     return [stats_A, stats_B]
@@ -303,7 +297,7 @@ def main():
                  'topology': [],
                  'throughput': [],
                  'ap_collisions': [],
-                 'collisions': [],
+                 'station_collisions': [],
                  'fairness': []}
 
     for rate in ARRIVAL_RATE:
@@ -351,17 +345,14 @@ def main():
 
     plot.savefig('ap_collisions.png')
 
-    df['collisions_A_B'] = (df.query('station == "A"')['collisions']
-                            + df.query('station == "B"')['collisions'])
-
     plot = sb.catplot(df,
                       kind='bar',
                       x='topology',
-                      y='collisions_A_B',
+                      y='station_collisions',
                       hue='rate',
                       palette='tab10')
 
-    plot.savefig('collisions_A_B.png')
+    plot.savefig('station_collisions.png')
 
     print('Script complete.')
 
