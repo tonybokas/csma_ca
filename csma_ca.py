@@ -271,13 +271,13 @@ def simulation(rate: int, ht: bool, vcs: bool):
     ttt_B = station_B.tot_trans_time
 
     stats_A = {'station': 'A',
-               'throughput': s_A*FRAME/SIM_TIME,
+               'throughput': s_A * FRAME / SIM_TIME * 10**-6,
                'ap_collisions': access_pt.tot_collisions,
                'station_collisions': station_A.tot_collisions,
                'fairness': tot_A/tot_B}
 
     stats_B = {'station': 'B',
-               'throughput': s_B*FRAME/SIM_TIME,
+               'throughput': s_B * FRAME / SIM_TIME * 10**-6,
                'ap_collisions': access_pt.tot_collisions,
                'station_collisions': station_B.tot_collisions,
                'fairness': tot_B/tot_A}
@@ -325,36 +325,45 @@ def main():
                           x='topology',
                           y='throughput',
                           hue='rate',
-                          palette='tab10')
+                          palette='tab10',
+                          errorbar=None)
 
-        plot.savefig(f'throughput_{alpha}.png')
+        plot.set(ylabel=f'station {alpha} throughput in Mbps')
+        plot.savefig(f'throughput_{alpha}.png', dpi=200)
 
-        plot = sb.catplot(df.query(f'station == "{alpha}"'),
+        plot = sb.catplot((df.query(f'station == "{alpha}"')
+                           [df.fairness < df.fairness.quantile(0.99)]),
                           kind='bar',
                           x='topology',
                           y='fairness',
                           hue='rate',
-                          palette='tab10')
+                          palette='tab10',
+                          errorbar=None)
 
-        plot.savefig(f'fairness_{alpha}.png')
+        plot.set(ylabel=f'station {alpha} fairness index')
+        plot.savefig(f'fairness_{alpha}.png', dpi=200)
 
     plot = sb.catplot(df,
                       kind='bar',
                       x='topology',
                       y='ap_collisions',
                       hue='rate',
-                      palette='tab10')
+                      palette='tab10',
+                      errorbar=None)
 
-    plot.savefig('ap_collisions.png')
+    plot.set(ylabel='access point collisions')
+    plot.savefig('ap_collisions.png', dpi=200)
 
     plot = sb.catplot(df,
                       kind='bar',
                       x='topology',
                       y='station_collisions',
                       hue='rate',
-                      palette='tab10')
+                      palette='tab10',
+                      errorbar=None)
 
-    plot.savefig('station_collisions.png')
+    plot.set(ylabel='station collisions')
+    plot.savefig('station_collisions.png', dpi=200)
 
     print('Script complete.')
 
