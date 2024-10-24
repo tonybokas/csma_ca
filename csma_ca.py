@@ -260,25 +260,27 @@ def simulation(rate: int, ht: bool, vcs: bool):
 
     print(f'End time: {end}\n')
 
-    tot_A = station_A.tot_successes + station_A.tot_collisions
-    ttt_A = station_A.tot_trans_time
+    s_A = station_A.tot_successes
+    tot_A = s_A + station_A.tot_collisions
     tts_A = station_A.tot_trans_size
+    ttt_A = station_A.tot_trans_time
 
-    tot_B = station_B.tot_successes + station_B.tot_collisions
-    ttt_B = station_B.tot_trans_time
+    s_B = station_B.tot_successes
+    tot_B = s_B + station_B.tot_collisions
     tts_B = station_B.tot_trans_size
+    ttt_B = station_B.tot_trans_time
 
     stats_A = {'station': 'A',
-               'throughput': tts_A/ttt_A if ttt_A else 0,
+               'throughput': s_A*FRAME/SIM_TIME,
                'ap_collisions': access_pt.tot_collisions,
                'station_collisions': station_A.tot_collisions,
-               'fairness': tot_A / tot_B if tot_B else 0}
+               'fairness': tot_A/tot_B}
 
     stats_B = {'station': 'B',
-               'throughput': tts_B/ttt_B if ttt_B else 0,
+               'throughput': s_B*FRAME/SIM_TIME,
                'ap_collisions': access_pt.tot_collisions,
                'station_collisions': station_B.tot_collisions,
-               'fairness': tot_B / tot_A if tot_A else 0}
+               'fairness': tot_B/tot_A}
 
     return [stats_A, stats_B]
 
