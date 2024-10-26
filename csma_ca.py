@@ -325,7 +325,7 @@ def main():
                           x='topology',
                           y='throughput',
                           hue='rate',
-                          palette='tab10',
+                          palette='Greys_d',
                           errorbar=None)
 
         plot.set(ylabel=f'station {alpha} throughput in Mbps')
@@ -337,7 +337,7 @@ def main():
                           x='topology',
                           y='fairness',
                           hue='rate',
-                          palette='tab10',
+                          palette='Greys_d',
                           errorbar=None)
 
         plot.set(ylabel=f'station {alpha} fairness index')
@@ -348,7 +348,7 @@ def main():
                       x='topology',
                       y='ap_collisions',
                       hue='rate',
-                      palette='tab10',
+                      palette='Greys_d',
                       errorbar=None)
 
     plot.set(ylabel='access point collisions')
@@ -359,7 +359,7 @@ def main():
                       x='topology',
                       y='station_collisions',
                       hue='rate',
-                      palette='tab10',
+                      palette='Greys_d',
                       errorbar=None)
 
     plot.set(ylabel='station collisions')
