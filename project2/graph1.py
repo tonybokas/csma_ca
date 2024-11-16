@@ -24,6 +24,3 @@ for i, f in enumerate(files):
         )
 
 figure.savefig(f'1_AS_classes.png', dpi=200)
-
-
-# GRAPH 2
