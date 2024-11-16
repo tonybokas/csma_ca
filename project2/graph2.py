@@ -15,6 +15,7 @@ temp = pd.DataFrame({'type': ['distinct', 'providers', 'customers', 'peers'],
                               len(set(df.query('value == -1').customer_as)),
                               len(set(df.query('value == 0').customer_as)),
                               len(set(df.query('value == -1').provider_as))]})
+
 temp.plot.bar(ax=plots[0][0],
               x='type',
               y='freq',
@@ -24,7 +25,7 @@ temp.plot.bar(ax=plots[0][0],
 
 bins = ['0', '1', '2-5', '6-100', '101-500', '501-1000', '>1000']
 
-temp = df.query('value == -1').customer_as
+temp = df.query('value == -1').groupby('provider_as').count().customer_as
 
 temp = pd.DataFrame({'as_value': bins,
                      'freq': [len(temp[temp == 0]),
@@ -42,7 +43,7 @@ temp.plot.bar(ax=plots[1][0],
               rot=0,
               legend=False)
 
-temp = df.query('value == 0').customer_as
+temp = df.query('value == 0').groupby('customer_as').count().provider_as
 
 temp = pd.DataFrame({'as_value': bins,
                      'freq': [len(temp[temp == 0]),
@@ -60,7 +61,7 @@ temp.plot.bar(ax=plots[0][1],
               rot=0,
               legend=False)
 
-temp = df.query('value == -1').provider_as
+temp = df.query('value == -1').groupby('customer_as').count().provider_as
 
 temp = pd.DataFrame({'as_value': bins,
                      'freq': [len(temp[temp == 0]),
