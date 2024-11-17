@@ -119,6 +119,6 @@ temp.plot.bar(ax=plots[1][1],
 figure.tight_layout()                               # improve spacing
 figure.suptitle('Degree Distribution of AS Links')  # figure title
 figure.subplots_adjust(top=0.92)                    # space below title
-figure.savefig('2_AS_degree_dist.png', dpi=200)    # custom dots per inch
+figure.savefig('2_AS_degree_dist.png', dpi=200)     # custom dots per inch
 
 print('Success.')
