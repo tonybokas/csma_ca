@@ -3,6 +3,7 @@
 from pandas import DataFrame, read_csv
 from matplotlib import pyplot
 
+
 ''' NOTES
 
 PLOT 1
