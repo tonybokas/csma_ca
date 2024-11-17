@@ -3,49 +3,56 @@
 import pandas as pd
 from matplotlib import pyplot
 
+''' NOTES
 
-# GRAPH 2
+PLOT 1
 
-df = pd.read_csv('20241101.as-rel2.txt', sep='|', usecols=[0, 1, 2])
+Customers: if value is -1 then link is provider-to-customer: count customer_as
+Peers: if value is 0 then link is peer-to-peer: count customer_as
+Providers: if value is -1 then link is provider-to-customer: count provider_as
 
+PLOT 2, 3, 4
+
+Same as above, but group by counted column, then allocate into bins
+'''
+
+# PLOT 1
+
+df = pd.read_csv('20241101.as-rel2.txt',
+                 names=['provider_as', 'customer_as', 'value'],  # column names
+                 sep='|',            # column separator
+                 usecols=[0, 1, 2])  # columns to keep
+
+# Create a 2x2 figure with subplots:
 figure, plots = pyplot.subplots(nrows=2, ncols=2, figsize=(12, 6))
 
-temp = pd.DataFrame({'type': ['distinct', 'providers', 'customers', 'peers'],
-                     'freq': [len(df.drop_duplicates()),  # distinct links
-                              len(set(df.query('value == -1').customer_as)),
-                              len(set(df.query('value == 0').customer_as)),
-                              len(set(df.query('value == -1').provider_as))]})
+# Total the number of links for each type; casting as set removes duplicates:
+temp = pd.DataFrame({'type': ['customers', 'peers', 'providers'],
+                     'freq': [len(set(df.query('value == 0').customer_as)),
+                              len(set(df.query('value == -1').provider_as)),
+                              len(set(df.query('value == -1').customer_as))]})
 
-temp.plot.bar(ax=plots[0][0],
+temp.plot.bar(ax=plots[0][0],  # assign to top-left square of figure
               x='type',
               y='freq',
               ylabel='distinct links',
-              rot=0,
+              color=['black', 'dimgrey', 'silver'],
+              rot=0,  # don't rotate x-axis labels
               legend=False)
 
-bins = ['0', '1', '2-5', '6-100', '101-500', '501-1000', '>1000']
+# PLOT 2
+
+# Nominal bins:
+bins = ['0', '1', '2-5', '6-100', '101-500', '501-1000', '1000<']
 
 temp = df.query('value == -1').groupby('provider_as').count().customer_as
 
-temp = pd.DataFrame({'as_value': bins,
-                     'freq': [len(temp[temp == 0]),
-                              len(temp[temp == 1]),
-                              len(temp[temp.between(2, 5)]),
-                              len(temp[temp.between(6, 100)]),
-                              len(temp[temp.between(101, 500)]),
-                              len(temp[temp.between(501, 1000)]),
-                              len(temp[temp >= 1001])]})
-
-temp.plot.bar(ax=plots[1][0],
-              x='as_value',
-              y='freq',
-              ylabel='number of direct customers',
-              rot=0,
-              legend=False)
-
-temp = df.query('value == 0').groupby('customer_as').count().provider_as
-
-temp = pd.DataFrame({'as_value': bins,
+# I tried to use hist plot but cannot get custom bins to work. Instead, I
+# create a total for each bin and make a new DataFrame to plot. For
+# temp[temp == X], the inner temp == X returns the rows that equal X, these
+# are then filtered in by the outer temp. len then gives you the total in the
+# pandas Series:
+temp = pd.DataFrame({'value': bins,
                      'freq': [len(temp[temp == 0]),
                               len(temp[temp == 1]),
                               len(temp[temp.between(2, 5)]),
@@ -55,15 +62,41 @@ temp = pd.DataFrame({'as_value': bins,
                               len(temp[temp >= 1001])]})
 
 temp.plot.bar(ax=plots[0][1],
-              x='as_value',
+              x='value',
+              xlabel='distribution bin',
               y='freq',
-              ylabel='number of peers',
+              ylabel='number of direct customers',
+              color='black',
               rot=0,
               legend=False)
 
+# PLOT 3
+
+temp = df.query('value == 0').groupby('customer_as').count().provider_as
+
+temp = pd.DataFrame({'value': bins,
+                     'freq': [len(temp[temp == 0]),
+                              len(temp[temp == 1]),
+                              len(temp[temp.between(2, 5)]),
+                              len(temp[temp.between(6, 100)]),
+                              len(temp[temp.between(101, 500)]),
+                              len(temp[temp.between(501, 1000)]),
+                              len(temp[temp >= 1001])]})
+
+temp.plot.bar(ax=plots[1][0],
+              x='value',
+              xlabel='distribution bin',
+              y='freq',
+              ylabel='number of peers',
+              color='dimgrey',
+              rot=0,
+              legend=False)
+
+# PLOT 4
+
 temp = df.query('value == -1').groupby('customer_as').count().provider_as
 
-temp = pd.DataFrame({'as_value': bins,
+temp = pd.DataFrame({'value': bins,
                      'freq': [len(temp[temp == 0]),
                               len(temp[temp == 1]),
                               len(temp[temp.between(2, 5)]),
@@ -73,13 +106,19 @@ temp = pd.DataFrame({'as_value': bins,
                               len(temp[temp >= 1001])]})
 
 temp.plot.bar(ax=plots[1][1],
-              x='as_value',
+              x='value',
+              xlabel='distribution bin',
               y='freq',
               ylabel='number of providers',
+              color='silver',
               rot=0,
               legend=False)
 
-figure.tight_layout()
-figure.suptitle('Degree Distributions')
-figure.subplots_adjust(top=0.9)
-figure.savefig(f'2_AS_degree_dist.png', dpi=200)
+# FIGURE SETTINGS
+
+figure.tight_layout()                               # improve spacing
+figure.suptitle('Degree Distribution of AS Links')  # figure title
+figure.subplots_adjust(top=0.92)                    # space below title
+figure.savefig('2_AS_degree_dist.png', dpi=200)    # custom dots per inch
+
+print('Success.')
