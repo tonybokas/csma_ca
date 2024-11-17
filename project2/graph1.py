@@ -15,7 +15,8 @@ figure, plots = pyplot.subplots(1, 2, figsize=(12, 6))
 # it returns a 0 for the first iteration and a 1 for the second. We then use
 # those integers for the subplot positioning:
 for i, f in enumerate(files):
-    # File, column names, column separater, and number of rows to skip:
+
+    # File, column names, column separator, and number of rows to skip:
     df = read_csv(f, names=['as', 'source', 'type'], sep='|', skiprows=6)
 
     df.groupby('type').count().plot.pie(
