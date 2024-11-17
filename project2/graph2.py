@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import pandas as pd
+from pandas import DataFrame, read_csv
 from matplotlib import pyplot
 
 ''' NOTES
@@ -18,19 +18,19 @@ Same as above, but group by counted column, then allocate into bins
 
 # PLOT 1
 
-df = pd.read_csv('20241101.as-rel2.txt',
-                 names=['provider_as', 'customer_as', 'value'],  # column names
-                 sep='|',            # column separator
-                 usecols=[0, 1, 2])  # columns to keep
+df = read_csv('20241101.as-rel2.txt',
+              names=['provider_as', 'customer_as', 'value'],  # column names
+              sep='|',            # column separator
+              usecols=[0, 1, 2])  # columns to keep
 
 # Create a 2x2 figure with subplots:
 figure, plots = pyplot.subplots(nrows=2, ncols=2, figsize=(12, 6))
 
 # Total the number of links for each type; casting as set removes duplicates:
-temp = pd.DataFrame({'type': ['customers', 'peers', 'providers'],
-                     'freq': [len(set(df.query('value == 0').customer_as)),
-                              len(set(df.query('value == -1').provider_as)),
-                              len(set(df.query('value == -1').customer_as))]})
+temp = DataFrame({'type': ['customers', 'peers', 'providers'],
+                  'freq': [len(set(df.query('value == 0').customer_as)),
+                           len(set(df.query('value == -1').provider_as)),
+                           len(set(df.query('value == -1').customer_as))]})
 
 temp.plot.bar(ax=plots[0][0],  # assign to top-left square of figure
               x='type',
@@ -52,14 +52,14 @@ temp = df.query('value == -1').groupby('provider_as').count().customer_as
 # temp[temp == X], the inner temp == X returns the rows that equal X, these
 # are then filtered in by the outer temp. len then gives you the total in the
 # pandas Series:
-temp = pd.DataFrame({'value': bins,
-                     'freq': [len(temp[temp == 0]),
-                              len(temp[temp == 1]),
-                              len(temp[temp.between(2, 5)]),
-                              len(temp[temp.between(6, 100)]),
-                              len(temp[temp.between(101, 500)]),
-                              len(temp[temp.between(501, 1000)]),
-                              len(temp[temp >= 1001])]})
+temp = DataFrame({'value': bins,
+                  'freq': [len(temp[temp == 0]),
+                           len(temp[temp == 1]),
+                           len(temp[temp.between(2, 5)]),
+                           len(temp[temp.between(6, 100)]),
+                           len(temp[temp.between(101, 500)]),
+                           len(temp[temp.between(501, 1000)]),
+                           len(temp[temp >= 1001])]})
 
 temp.plot.bar(ax=plots[0][1],
               x='value',
@@ -74,14 +74,14 @@ temp.plot.bar(ax=plots[0][1],
 
 temp = df.query('value == 0').groupby('customer_as').count().provider_as
 
-temp = pd.DataFrame({'value': bins,
-                     'freq': [len(temp[temp == 0]),
-                              len(temp[temp == 1]),
-                              len(temp[temp.between(2, 5)]),
-                              len(temp[temp.between(6, 100)]),
-                              len(temp[temp.between(101, 500)]),
-                              len(temp[temp.between(501, 1000)]),
-                              len(temp[temp >= 1001])]})
+temp = DataFrame({'value': bins,
+                  'freq': [len(temp[temp == 0]),
+                           len(temp[temp == 1]),
+                           len(temp[temp.between(2, 5)]),
+                           len(temp[temp.between(6, 100)]),
+                           len(temp[temp.between(101, 500)]),
+                           len(temp[temp.between(501, 1000)]),
+                           len(temp[temp >= 1001])]})
 
 temp.plot.bar(ax=plots[1][0],
               x='value',
@@ -96,14 +96,14 @@ temp.plot.bar(ax=plots[1][0],
 
 temp = df.query('value == -1').groupby('customer_as').count().provider_as
 
-temp = pd.DataFrame({'value': bins,
-                     'freq': [len(temp[temp == 0]),
-                              len(temp[temp == 1]),
-                              len(temp[temp.between(2, 5)]),
-                              len(temp[temp.between(6, 100)]),
-                              len(temp[temp.between(101, 500)]),
-                              len(temp[temp.between(501, 1000)]),
-                              len(temp[temp >= 1001])]})
+temp = DataFrame({'value': bins,
+                  'freq': [len(temp[temp == 0]),
+                           len(temp[temp == 1]),
+                           len(temp[temp.between(2, 5)]),
+                           len(temp[temp.between(6, 100)]),
+                           len(temp[temp.between(101, 500)]),
+                           len(temp[temp.between(501, 1000)]),
+                           len(temp[temp >= 1001])]})
 
 temp.plot.bar(ax=plots[1][1],
               x='value',
