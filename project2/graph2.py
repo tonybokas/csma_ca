@@ -60,7 +60,7 @@ temp = DataFrame({'value': bins,
                            len(temp[temp.between(6, 100)]),
                            len(temp[temp.between(101, 500)]),
                            len(temp[temp.between(501, 1000)]),
-                           len(temp[temp >= 1001])]})
+                           len(temp[temp > 1000])]})
 
 temp.plot.bar(ax=plots[0][1],
               x='value',
@@ -82,7 +82,7 @@ temp = DataFrame({'value': bins,
                            len(temp[temp.between(6, 100)]),
                            len(temp[temp.between(101, 500)]),
                            len(temp[temp.between(501, 1000)]),
-                           len(temp[temp >= 1001])]})
+                           len(temp[temp > 1000])]})
 
 temp.plot.bar(ax=plots[1][0],
               x='value',
@@ -104,7 +104,7 @@ temp = DataFrame({'value': bins,
                            len(temp[temp.between(6, 100)]),
                            len(temp[temp.between(101, 500)]),
                            len(temp[temp.between(501, 1000)]),
-                           len(temp[temp >= 1001])]})
+                           len(temp[temp > 1000])]})
 
 temp.plot.bar(ax=plots[1][1],
               x='value',
