@@ -10,8 +10,8 @@ This seems like the only way to get the types for each AS. Since he just wants
 totals, not actual AS values or details, I decided to just count the AS numbers
 from 2024 that appear in 2021 under certain conditions.
 
-The alternative is to do bunch of join logic that would combine the DataFrames.
-I think this way is more straightforward.
+The alternative is to do a bunch of join logic that would combine the
+DataFrames. I think this way is more straightforward.
 '''
 
 # GRAPH 4 CLASSIFICAITON PIE CHART RECREATED
@@ -44,7 +44,7 @@ enterprise = len(df21[~df21['as'].isin(subset)])
 subset = (df24.query('value == 0').groupby('provider_as').count().reset_index()
           .query('customer_as > 1').provider_as)
 
-# Find ASes that are in 2021 and subset:
+# Find ASes that are in subset:
 content = len(df21[df21['as'].isin(subset)])
 
 # SLICE 3
@@ -53,7 +53,7 @@ content = len(df21[df21['as'].isin(subset)])
 subset = (df24.query('value == -1').groupby('provider_as').count().reset_index()
           .query('customer_as > 0').provider_as)
 
-# Find ASes that are in 2021 and subset:
+# Find ASes that are in subset:
 transit = len(df21[df21['as'].isin(subset)])
 
 # COMBINE SLICES AND PLOT
