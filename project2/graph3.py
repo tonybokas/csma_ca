@@ -11,7 +11,7 @@ df = read_csv('routeviews-rv2-20241106-1400.pfx2as.txt',
               sep='\t',                   # column separator
               usecols=[1, 2])             # columns to keep
 
-# Handle drop the non-numeric characters in AS column:
+# Remove rows with non-numeric characters in AS column:
 df.as_id = df.as_id.apply(lambda x: to_numeric(x, errors='coerce'))
 df = df.dropna()
 
