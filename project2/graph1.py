@@ -17,12 +17,12 @@ figure, plots = pyplot.subplots(1, 2, figsize=(12, 6))
 for i, f in enumerate(files):
 
     # File, column names, column separator, and number of rows to skip:
-    df = read_csv(f, names=['as', 'source', 'type'], sep='|', skiprows=6)
+    df = read_csv(f, names=['as_id', 'source', 'type'], sep='|', skiprows=6)
 
     df.groupby('type').count().plot.pie(
         ax=plots[i],
         title='AS Classes ' + f[:4],  # read first 4 characters (i.e., year)
-        y='as',
+        y='as_id',
         ylabel='percent',
         autopct='%.1f',  # display slice percentage
         colors=['dimgrey', 'darkgrey', 'gainsboro'],

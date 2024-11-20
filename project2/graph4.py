@@ -17,7 +17,7 @@ DataFrames. I think this way is more straightforward.
 # GRAPH 4 CLASSIFICAITON PIE CHART RECREATED
 
 df21 = read_csv('20210401.as2types.txt',
-                names=['as', 'source', 'type'],
+                names=['as_id', 'source', 'type'],
                 sep='|',
                 skiprows=6)
 
@@ -32,11 +32,11 @@ df24 = read_csv('20241101.as-rel2.txt',
 subset = df24.query('value == -1').provider_as.unique()
 
 # Find ASes that don't appear in the 2024 subset (i.e., no customers or peers).
-# `df21['as'].isin(subset)` returns "True" or "False" for each index.
+# `df21['as_id'].isin(subset)` returns "True" or "False" for each index.
 # The tilde (~) inverts those booleans, kind of how `not True` returns `False`.
 # I then use those inverted booleans, which are indexed, to get the ASes that
 # are in 2021 but not 2024:
-enterprise = len(df21[~df21['as'].isin(subset)])
+enterprise = len(df21[~df21['as_id'].isin(subset)])
 
 # SLICE 2
 
@@ -45,7 +45,7 @@ subset = (df24.query('value == 0').groupby('provider_as').count().reset_index()
           .query('customer_as > 1').provider_as)
 
 # Find ASes that are in subset:
-content = len(df21[df21['as'].isin(subset)])
+content = len(df21[df21['as_id'].isin(subset)])
 
 # SLICE 3
 
@@ -54,7 +54,7 @@ subset = (df24.query('value == -1').groupby('provider_as').count().reset_index()
           .query('customer_as > 0').provider_as)
 
 # Find ASes that are in subset:
-transit = len(df21[df21['as'].isin(subset)])
+transit = len(df21[df21['as_id'].isin(subset)])
 
 # COMBINE SLICES AND PLOT
 
