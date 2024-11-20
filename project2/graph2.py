@@ -49,6 +49,11 @@ bins = ['0', '1', '2-5', '6-100', '101-500', '501-1000', '1000<']
 
 temp = df.query('value == -1').groupby('provider_as').count().customer_as
 
+# I tried to use hist plot but cannot get custom bins to work. Instead, I
+# create a total for each bin and make a new DataFrame to plot. For
+# temp[temp == X], the inner temp == X returns the rows that equal X, these
+# are then filtered in by the outer temp. len then gives you the total in the
+# pandas Series:
 freq = [len(temp[temp == 0]),
         len(temp[temp == 1]),
         len(temp[temp.between(2, 5)]),
@@ -57,11 +62,6 @@ freq = [len(temp[temp == 0]),
         len(temp[temp.between(501, 1000)]),
         len(temp[temp > 1000])]
 
-# I tried to use hist plot but cannot get custom bins to work. Instead, I
-# create a total for each bin and make a new DataFrame to plot. For
-# temp[temp == X], the inner temp == X returns the rows that equal X, these
-# are then filtered in by the outer temp. len then gives you the total in the
-# pandas Series:
 temp = DataFrame({'value': bins, 'freq': freq})
 
 temp.plot.bar(ax=plots[0][1],
