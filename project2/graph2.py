@@ -98,35 +98,22 @@ temp.plot.bar(ax=plots[1][0],
 
 # PLOT 4
 
-# Read in routeviews file:
-rv = read_csv('routeviews-rv2-20241106-1400.pfx2as.txt',
-              names=['ip_address', 'prefix', 'as_id'],  # column names
-              sep='\t')                                 # tab delimited
-
-# Remove non-numeric AS values by setting them to null then dropping:
-rv.as_id = rv.as_id.apply(lambda x: to_numeric(x, errors='coerce'))
-rv = rv.dropna()
-
-rv['ip_space'] = rv.prefix.apply(lambda x: 2**(32 - x))
-
-# Dervice the total IP space for each AS:
-rv = rv[['as_id', 'ip_space']].groupby('as_id').sum().reset_index()
+temp = df.query('value == -1').groupby('customer_as').count().provider_as
 
 temp = DataFrame({'value': bins,
-                  'freq': [rv[rv.as_id == 0].ip_space.sum(),
-                           rv[rv.as_id == 1].ip_space.sum(),
-                           rv[rv.as_id.between(2, 5)].ip_space.sum(),
-                           rv[rv.as_id.between(6, 100)].ip_space.sum(),
-                           rv[rv.as_id.between(101, 500)].ip_space.sum(),
-                           rv[rv.as_id.between(501, 1000)].ip_space.sum(),
-                           rv[rv.as_id > 1000].ip_space.sum()]})
+                  'freq': [len(temp[temp == 0]),
+                           len(temp[temp == 1]),
+                           len(temp[temp.between(2, 5)]),
+                           len(temp[temp.between(6, 100)]),
+                           len(temp[temp.between(101, 500)]),
+                           len(temp[temp.between(501, 1000)]),
+                           len(temp[temp > 1000])]})
 
 temp.plot.bar(ax=plots[1][1],
               x='value',
               xlabel='AS ID',
               y='freq',
-              yticks=[i for i in range(0, 5 * 10**9, 1 * 10**9)],
-              ylabel='number of providers (billions)',
+              ylabel='number of providers',
               color='silver',
               rot=0,
               legend=False)
