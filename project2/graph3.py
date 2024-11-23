@@ -1,8 +1,6 @@
 #!/usr/bin/env python
 
 from pandas import DataFrame, read_csv, to_numeric
-from matplotlib import pyplot
-
 
 # GRAPH 3
 
