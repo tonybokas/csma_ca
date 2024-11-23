@@ -32,6 +32,10 @@ g_rank['conn'] = g_rank.as_id.apply(
                   df[df.customer_as == x].provider_as.to_list()),
     )
 
+print('AS ID Global Rankings\n')
+print(g_rank.head(5))  # top 5 rows sample
+print()
+
 clique = g_rank.iloc[0].conn  # the as_id #1 clique
 
 # Check if each as_id in the top 50 is the #1 as_id's connections:
