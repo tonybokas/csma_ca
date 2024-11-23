@@ -10,7 +10,8 @@ Providers: if value is -1 then link is p2c: count customer_as
 Global: count customer_as and provider_as
 '''
 
-# Load Data:
+# ETL
+
 df = read_csv('20241101.as-rel2.txt',
               names=['provider_as', 'customer_as', 'value'],  # column names
               sep='|',            # column separator
@@ -37,7 +38,26 @@ clique = g_rank.iloc[0].conn  # the as_id #1 clique
 g_rank['clique_1'] = g_rank.apply(lambda x: x.as_id in clique, axis=1)
 g_rank.loc[0, 'clique_1'] = True  # set to True since # as_id the root
 
-# Save to CSV:
+# CREATE API STRING FOR CAIDA.ORG
+
+print('Top 10 clique-member AS numbers as CAIDA API string\n'
+      '(https://api.data.caida.org/as2org/v1/doc):\n')
+
+api_string = ''
+
+for i, as_id in enumerate(g_rank.query('clique_1 == True').as_id.to_list()):
+    if i == 10:
+        break
+    api_string += str(as_id) + '_'
+
+print(api_string[:-1], '\n')
+print('Hint: On the API page, use the "Get /as2org/v1/asns/{asns}" endpoint\n'
+      'to retrieve a JSON object of the organizations and their details.\n'
+      'Put the string in the "asns *required" field and select "execute".\n'
+      'Scroll down to "Responses". You will see your JSON there.\n')
+
+# SAVE RESULTS
+
 g_rank[['as_id', 'members', 'clique_1']].to_csv('5_AS_clique.csv')
 
 print('Success.')
