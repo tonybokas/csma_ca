@@ -17,14 +17,27 @@ df = df.dropna()
 df['ip_space'] = df.prefix.apply(lambda x: 2**(32 - x))
 
 # Dervice the total IP space for each AS:
-bins = ['<500', '501-1000', '1001-2000', '2001-4000', '4001-8000', '8000<']
+bins = ['<4',
+        '4-8',
+        '8-12',
+        '12-16',
+        '16-20',
+        '20-24',
+        '24-28',
+        '28-32',
+        '32-36',
+        '36<']
 
-freq = [df[df.as_id < 500].ip_space.sum(),
-        df[df.as_id.between(501, 1000)].ip_space.sum(),
-        df[df.as_id.between(1001, 2000)].ip_space.sum(),
-        df[df.as_id.between(2001, 4000)].ip_space.sum(),
+freq = [df[df.as_id < 4000].ip_space.sum(),
         df[df.as_id.between(4001, 8000)].ip_space.sum(),
-        df[df.as_id > 8000].ip_space.sum()]
+        df[df.as_id.between(8001, 12000)].ip_space.sum(),
+        df[df.as_id.between(12001, 16000)].ip_space.sum(),
+        df[df.as_id.between(16001, 20000)].ip_space.sum(),
+        df[df.as_id.between(20001, 24000)].ip_space.sum(),
+        df[df.as_id.between(24001, 28000)].ip_space.sum(),
+        df[df.as_id.between(28001, 32000)].ip_space.sum(),
+        df[df.as_id.between(32001, 36000)].ip_space.sum(),
+        df[df.as_id > 36000].ip_space.sum()]
 
 temp = DataFrame({'value': bins, 'freq': freq})
 temp.freq = temp.freq / (1 * 10**9)  # adjust values to correspond to yticks
@@ -32,9 +45,9 @@ temp.freq = temp.freq / (1 * 10**9)  # adjust values to correspond to yticks
 plot = temp.plot.bar(
     title='IP Space Distribution Across ASes',
     x='value',
-    xlabel='AS ID',
+    xlabel='AS ID number (thousands)',
     y='freq',
-    yticks=[i * 0.1 for i in range(0, 23, 2)],
+    yticks=[i * 0.1 for i in range(0, 14, 2)],
     ylabel='IP space (billions)',
     color='dimgrey',
     rot=0,

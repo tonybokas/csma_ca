@@ -51,6 +51,7 @@ for i, as_id in enumerate(g_rank.query('clique_1 == True').as_id.to_list()):
     api_string += str(as_id) + '_'
 
 print(api_string[:-1], '\n')
+
 print('Hint: On the API page, use the "Get /as2org/v1/asns/{asns}" endpoint\n'
       'to retrieve a JSON object of the organizations and their details.\n'
       'Put the string in the "asns *required" field and select "execute".\n'
