@@ -40,7 +40,7 @@ clique = g_rank.iloc[0].conn  # the as_id #1 clique
 
 # Check if each as_id in the top 50 is the #1 as_id's connections:
 g_rank['clique_1'] = g_rank.apply(lambda x: x.as_id in clique, axis=1)
-g_rank.loc[0, 'clique_1'] = True  # set to True since # as_id the root
+g_rank.loc[0, 'clique_1'] = True  # set to True since as_id #1 is the root
 
 # CREATE API STRING FOR CAIDA.ORG
 
